@@ -34,5 +34,4 @@ jobs:
     
     - name: Verify syntax
       run: |
-        cd skills/website-fraud-check
         node -c scripts/website_fraud_check.mjs
