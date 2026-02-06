@@ -1,0 +1,94 @@
+# Legitimate Domains Configuration
+# Add domains that are considered legitimate for fraud checking
+# Format: One domain per line
+# Lines starting with # are comments
+
+# Major Global Services
+google.com
+www.google.com
+accounts.google.com
+drive.google.com
+mail.google.com
+gmail.com
+www.gmail.com
+youtube.com
+www.youtube.com
+facebook.com
+www.facebook.com
+instagram.com
+www.instagram.com
+twitter.com
+www.twitter.com
+linkedin.com
+www.linkedin.com
+microsoft.com
+www.microsoft.com
+office.com
+www.office.com
+live.com
+www.live.com
+hotmail.com
+www.hotmail.com
+outlook.com
+www.outlook.com
+apple.com
+www.apple.com
+icloud.com
+www.icloud.com
+amazon.com
+www.amazon.com
+aws.amazon.com
+paypal.com
+www.paypal.com
+ebay.com
+www.ebay.com
+netflix.com
+www.netflix.com
+spotify.com
+www.spotify.com
+adobe.com
+www.adobe.com
+github.com
+www.github.com
+stackoverflow.com
+www.stackoverflow.com
+wikipedia.org
+www.wikipedia.org
+yahoo.com
+www.yahoo.com
+bing.com
+www.bing.com
+duckduckgo.com
+www.duckduckgo.com
+
+# Hong Kong Banks
+hangseng.com
+www.hangseng.com
+hkbea.com
+www.hkbea.com
+standardchartered.com.hk
+www.standardchartered.com.hk
+hsbc.com.hk
+www.hsbc.com.hk
+sc.com
+www.sc.com
+dbs.com.hk
+www.dbs.com.hk
+ocbc.com.hk
+www.ocbc.com.hk
+bankcomm.com.hk
+www.bankcomm.com.hk
+citicbank.com.hk
+www.citicbank.com.hk
+
+# Other Hong Kong Financial Institutions
+bochk.com
+www.bochk.com
+winglungbank.com
+www.winglungbank.com
+chbank.com
+www.chbank.com
+
+# Government domains
+.gov.hk
+.gov.cn

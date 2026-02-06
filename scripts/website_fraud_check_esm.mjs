@@ -1,5 +1,3 @@
-#!/usr/bin/env node
-
 import { execSync } from 'child_process';
 import https from 'https';
 import http from 'http';
@@ -39,94 +37,8 @@ class WebsiteFraudChecker {
             /-\w*-\w*-/              // Too many hyphens (typo-squatting)
         ];
 
-        // Known legitimate domains (add more as needed)
-        this.legitimateDomains = [
-            'google.com',
-            'www.google.com',
-            'accounts.google.com',
-            'drive.google.com',
-            'mail.google.com',
-            'gmail.com',
-            'www.gmail.com',
-            'youtube.com',
-            'www.youtube.com',
-            'facebook.com',
-            'www.facebook.com',
-            'instagram.com',
-            'www.instagram.com',
-            'twitter.com',
-            'www.twitter.com',
-            'linkedin.com',
-            'www.linkedin.com',
-            'microsoft.com',
-            'www.microsoft.com',
-            'office.com',
-            'www.office.com',
-            'live.com',
-            'www.live.com',
-            'hotmail.com',
-            'www.hotmail.com',
-            'outlook.com',
-            'www.outlook.com',
-            'apple.com',
-            'www.apple.com',
-            'icloud.com',
-            'www.icloud.com',
-            'amazon.com',
-            'www.amazon.com',
-            'aws.amazon.com',
-            'paypal.com',
-            'www.paypal.com',
-            'ebay.com',
-            'www.ebay.com',
-            'netflix.com',
-            'www.netflix.com',
-            'spotify.com',
-            'www.spotify.com',
-            'adobe.com',
-            'www.adobe.com',
-            'github.com',
-            'www.github.com',
-            'stackoverflow.com',
-            'www.stackoverflow.com',
-            'wikipedia.org',
-            'www.wikipedia.org',
-            'yahoo.com',
-            'www.yahoo.com',
-            'bing.com',
-            'www.bing.com',
-            'duckduckgo.com',
-            'www.duckduckgo.com',
-            // Hong Kong banks
-            'hangseng.com',
-            'www.hangseng.com',
-            'hkbea.com',
-            'www.hkbea.com',
-            'standardchartered.com.hk',
-            'www.standardchartered.com.hk',
-            'hsbc.com.hk',
-            'www.hsbc.com.hk',
-            'sc.com',
-            'www.sc.com',
-            'dbs.com.hk',
-            'www.dbs.com.hk',
-            'ocbc.com.hk',
-            'www.ocbc.com.hk',
-            'bankcomm.com.hk',
-            'www.bankcomm.com.hk',
-            'citicbank.com.hk',
-            'www.citicbank.com.hk',
-            // Other Hong Kong financial institutions
-            'bochk.com',
-            'www.bochk.com',
-            'winglungbank.com',
-            'www.winglungbank.com',
-            'chbank.com',
-            'www.chbank.com',
-            // Government domains
-            '.gov.hk',
-            '.gov.cn'
-        ];
+        // Load legitimate domains from configuration file
+        this.legitimateDomains = this.loadLegitimateDomains();
 
         // Suspicious keywords that might indicate impersonation
         this.suspiciousKeywords = [
@@ -319,39 +231,10 @@ class WebsiteFraudChecker {
             console.debug(`Could not check domain age for ${hostname} (root: ${this.extractRootDomain(hostname)}): ${error.message}`);
             return null;
         }
-
-    /**
-     * Load legitimate domains from configuration file
-     */
-    loadLegitimateDomains() {
-        try {
-            // Import file system module
-            const fs = require('fs');
-            const path = require('path');
-            
-            // Define the path to the legitimate domains file
-            const filePath = path.resolve(__dirname, '../config/legitimate-domains.txt');
-            
-            // Read the file content
-            const content = fs.readFileSync(filePath, 'utf8');
-            
-            // Parse the file content to extract domains
-            const domains = content
-                .split('\n')
-                .map(line => line.trim())
-                .filter(line => line && !line.startsWith('#')) // Exclude empty lines and comments
-                .filter(line => line.length > 0); // Ensure no empty strings
-            
-            return domains;
-        } catch (error) {
-            console.debug(`Could not load legitimate domains from file: ${error.message}`);
-            // Return an empty array if the file cannot be loaded
-            return [];
-        }
     }
 
     /**
-     * Analyze URL for suspicious patterns
+     * Check SSL certificate validity
      */
     checkSSL(hostname) {
         return new Promise((resolve) => {
@@ -497,7 +380,7 @@ class WebsiteFraudChecker {
                 }
             };
 
-            // Make the POST request using Node.js http module
+            // Make the POST request using Node.js https module
             return new Promise((resolve) => {
                 const req = https.request(options, (res) => {
                     let data = '';
@@ -1192,30 +1075,8 @@ class WebsiteFraudChecker {
             isBlacklisted: false,
             threatsFound: [],
             confidence: 'high'
+        };
     }
-}
-
-async function main() {
-    const args = process.argv.slice(2);
-
-    if (args.length === 0) {
-        console.error('Usage: node website_fraud_check.mjs <website_url>');
-        console.error('Example: node website_fraud_check.mjs https://example.com');
-        process.exit(1);
-    }
-
-    const checker = new WebsiteFraudChecker();
-
-    try {
-        await checker.checkWebsiteRisk(args[0]);
-    } catch (error) {
-        console.error('Error during fraud check:', error.message);
-        process.exit(1);
-    }
-}
-
-if (import.meta.url === `file://${process.argv[1]}`) {
-    main();
 }
 
 export { WebsiteFraudChecker };
