@@ -283,10 +283,10 @@ class WebsiteFraudChecker {
      * Fetch website content with Playwright first (if available), static as fallback
      */
     async fetchWebsiteContent(urlString) {
-        // First, try to fetch content with Playwright (dynamic rendering)
+        let browser = null; // Initialize browser to null
         try {
             const { chromium } = await import('playwright');
-            const browser = await chromium.launch({ headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox'] });
+            browser = await chromium.launch({ headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox'] });
             const page = await browser.newPage();
             
             // Set a realistic user agent
@@ -301,8 +301,6 @@ class WebsiteFraudChecker {
             // Get the content after JavaScript execution
             const dynamicContent = await page.content();
             
-            await browser.close();
-            
             console.log('   ✅ Content fetched successfully with Playwright (dynamic rendering)');
             
             return {
@@ -314,6 +312,11 @@ class WebsiteFraudChecker {
             // Playwright failed, warn user about reduced accuracy
             console.log(`   ⚠️  Playwright failed: ${dynamicError.message}`);
             console.log('   ⚠️  Falling back to static content fetching - accuracy may be reduced without dynamic rendering');
+            // Do not re-throw here, let the outer function handle the fallback.
+        } finally {
+            if (browser) {
+                await browser.close(); // Ensure browser is always closed
+            }
         }
 
         // Fallback to static content fetching
@@ -988,7 +991,7 @@ class WebsiteFraudChecker {
         console.log('\n📄 Analyzing website content...');
         let contentResult;
         try {
-            const fetchedContent = await this.fetchWebsiteContent(websiteUrl);
+            const fetchedContent = await this.fetchWebsiteContent(websiteUrl); 
             contentResult = this.analyzeWebsiteContent(fetchedContent.content, hostname);
             console.log(`   ✅ Content fetched successfully (${fetchedContent.content.length} chars)`);
             

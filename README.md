@@ -154,9 +154,7 @@ To enable Google Safe Browsing API:
 
 The system uses HTTP POST requests to check URLs against the PhishTank database:
 1. Register for an API key at https://www.phishtank.com/api_info.php (optional but recommended)
-2. For simple daily lookups, the system performs direct HTTP POST requests to verify a URL's status
-
-The PhishTank API accepts HTTP POST requests and returns responses indicating a URL's status in their database.
+2. The API call could fail when Cloudflare trying to perform human verification
 
 ## Limitations
 
