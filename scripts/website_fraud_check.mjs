@@ -180,7 +180,10 @@ class WebsiteFraudChecker {
                 /登録日[^\d]*(\d{4}-\d{2}-\d{2})/i,             // Japanese format (YYYY-MM-DD)
                 /등록일[^\d]*(\d{4}-\d{2}-\d{2})/i,              // Korean format (YYYY-MM-DD)
                 /注册时间[^\d]*(\d{4}-\d{2}-\d{2})/i,            // Chinese simplified format (YYYY-MM-DD)
-                /註冊時間[^\d]*(\d{4}-\d{2}-\d{2})/i             // Chinese traditional format (YYYY-MM-DD)
+                /註冊時間[^\d]*(\d{4}-\d{2}-\d{2})/i,             // Chinese traditional format (YYYY-MM-DD)
+                /Updated Date[^\d]*(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z)/i,  // ISO format with timestamp (T and Z)
+                /Creation Date[^\d]*(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z)/i,  // ISO format with timestamp (T and Z)
+                /Registry Expiry Date[^\d]*(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z)/i  // ISO format with timestamp (T and Z)
             ];
 
             for (const pattern of datePatterns) {
@@ -199,6 +202,9 @@ class WebsiteFraudChecker {
                         // Handle DD-MM-YYYY format (like .hk domains)
                         const [day, month, year] = match[1].split('-');
                         creationDate = new Date(`${year}-${month}-${day}`);
+                    } else if (match[1].includes('T') && match[1].endsWith('Z')) {
+                        // Handle ISO format with timestamp (e.g., 2016-11-15T03:23:26Z)
+                        creationDate = new Date(match[1]);
                     } else {
                         // Default to YYYY-MM-DD format
                         creationDate = new Date(match[1]);
