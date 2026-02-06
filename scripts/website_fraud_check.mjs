@@ -274,51 +274,50 @@ class WebsiteFraudChecker {
     }
 
     /**
-     * Fetch website content with both static and dynamic methods
+     * Fetch website content with Playwright first (if available), static as fallback
      */
     async fetchWebsiteContent(urlString) {
+        // First, try to fetch content with Playwright (dynamic rendering)
         try {
-            // First, try to fetch content statically
-            const staticContent = await this.fetchStaticContent(urlString);
+            const { chromium } = await import('playwright');
+            const browser = await chromium.launch({ headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox'] });
+            const page = await browser.newPage();
             
-            // If Playwright is available, also try to get dynamic content
-            let dynamicContent = '';
-            try {
-                const { chromium } = await import('playwright');
-                const browser = await chromium.launch({ headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox'] });
-                const page = await browser.newPage();
-                
-                // Set a realistic user agent
-                await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36');
-                
-                // Navigate to the page
-                await page.goto(urlString, { waitUntil: 'networkidle', timeout: 10000 });
-                
-                // Wait for content to load
-                await page.waitForLoadState('domcontentloaded', { timeout: 5000 });
-                
-                // Get the content after JavaScript execution
-                dynamicContent = await page.content();
-                
-                await browser.close();
-            } catch (dynamicError) {
-                // If Playwright fails, that's okay - we'll just use static content
-                console.debug(`Dynamic content fetch failed (this is normal if Playwright is not installed): ${dynamicError.message}`);
-            }
+            // Set a realistic user agent
+            await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36');
+            
+            // Navigate to the page
+            await page.goto(urlString, { waitUntil: 'networkidle', timeout: 15000 });
+            
+            // Wait for content to load
+            await page.waitForLoadState('domcontentloaded', { timeout: 10000 });
+            
+            // Get the content after JavaScript execution
+            const dynamicContent = await page.content();
+            
+            await browser.close();
+            
+            console.log('   ✅ Content fetched successfully with Playwright (dynamic rendering)');
+            
+            return {
+                statusCode: 200, // Assume success since Playwright loaded the page
+                headers: {},
+                content: dynamicContent
+            };
+        } catch (dynamicError) {
+            // Playwright failed, warn user about reduced accuracy
+            console.log(`   ⚠️  Playwright failed: ${dynamicError.message}`);
+            console.log('   ⚠️  Falling back to static content fetching - accuracy may be reduced without dynamic rendering');
+        }
 
-            // Return the content that has more text (indicating more complete scraping)
-            if (dynamicContent && dynamicContent.length > staticContent.content.length) {
-                return {
-                    statusCode: staticContent.statusCode,
-                    headers: staticContent.headers,
-                    content: dynamicContent
-                };
-            } else {
-                return staticContent;
-            }
-        } catch (error) {
-            console.debug(`Failed to fetch website content: ${error.message}`);
-            throw error;
+        // Fallback to static content fetching
+        try {
+            const staticContent = await this.fetchStaticContent(urlString);
+            console.log('   ⚠️  Content fetched with static method - some dynamic elements may be missing');
+            return staticContent;
+        } catch (staticError) {
+            console.debug(`Failed to fetch website content: ${staticError.message}`);
+            throw staticError;
         }
     }
 

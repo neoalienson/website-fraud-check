@@ -88,29 +88,32 @@ flowchart TD
     C --> D[Check Domain Registration Age]
     D --> E[Verify SSL Certificate]
     E --> F[Fetch Website Content]
-    F --> G{Has Dynamic Content?}
+    F --> G{Playwright Available?}
     G -->|Yes| H[Render with Playwright]
     G -->|No| I[Scrape Static Content]
-    H --> J[Analyze Content for Impersonation]
-    I --> J
-    J --> K[Check Threat Intelligence Services]
-    K --> L[PhishTank API Check]
-    K --> M[Google Safe Browsing Check]
-    L --> N[Aggregate Results]
-    M --> N
-    N --> O[Check Website Popularity]
-    O --> P[Calculate Risk Score]
-    P --> Q{Risk Level?}
-    Q -->|Low| R[Return Low Risk Assessment]
-    Q -->|Medium| S[Return Medium Risk Assessment]
-    Q -->|High| T[Return High Risk Assessment]
-    Q -->|Critical| U[Return Critical Risk Assessment]
+    H --> J{Success?}
+    J -->|Yes| K[Analyze Content for Impersonation]
+    J -->|No| I
+    I --> L[Analyze Content for Impersonation]
+    K --> M[Check Threat Intelligence Services]
+    L --> M
+    M --> N[PhishTank API Check]
+    M --> O[Google Safe Browsing Check]
+    N --> P[Aggregate Results]
+    O --> P
+    P --> Q[Check Website Popularity]
+    Q --> R[Calculate Risk Score]
+    R --> S{Risk Level?}
+    S -->|Low| T[Return Low Risk Assessment]
+    S -->|Medium| U[Return Medium Risk Assessment]
+    S -->|High| V[Return High Risk Assessment]
+    S -->|Critical| W[Return Critical Risk Assessment]
     
     style A fill:#e1f5fe
-    style R fill:#e8f5e8
-    style S fill:#fff3e0
-    style T fill:#ffebee
-    style U fill:#ffcdd2
+    style T fill:#e8f5e8
+    style U fill:#fff3e0
+    style V fill:#ffebee
+    style W fill:#ffcdd2
 ```
 
 ## Detection Capabilities
