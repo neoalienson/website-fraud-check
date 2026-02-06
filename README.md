@@ -79,6 +79,7 @@ The system evaluates websites based on multiple factors:
    - **Static Content**: Direct HTML parsing for standard websites
    - **Dynamic Content**: Uses Playwright to render JavaScript-heavy sites before analysis
 5. **Threat Intelligence**: Checks against known malicious sites
+6. **Website Popularity**: Checks against Tranco popularity list to reduce risk for well-known sites
 
 ```mermaid
 flowchart TD
@@ -97,18 +98,19 @@ flowchart TD
     K --> M[Google Safe Browsing Check]
     L --> N[Aggregate Results]
     M --> N
-    N --> O[Calculate Risk Score]
-    O --> P{Risk Level?}
-    P -->|Low| Q[Return Low Risk Assessment]
-    P -->|Medium| R[Return Medium Risk Assessment]
-    P -->|High| S[Return High Risk Assessment]
-    P -->|Critical| T[Return Critical Risk Assessment]
+    N --> O[Check Website Popularity]
+    O --> P[Calculate Risk Score]
+    P --> Q{Risk Level?}
+    Q -->|Low| R[Return Low Risk Assessment]
+    Q -->|Medium| S[Return Medium Risk Assessment]
+    Q -->|High| T[Return High Risk Assessment]
+    Q -->|Critical| U[Return Critical Risk Assessment]
     
     style A fill:#e1f5fe
-    style Q fill:#e8f5e8
-    style R fill:#fff3e0
-    style S fill:#ffebee
-    style T fill:#ffcdd2
+    style R fill:#e8f5e8
+    style S fill:#fff3e0
+    style T fill:#ffebee
+    style U fill:#ffcdd2
 ```
 
 ## Detection Capabilities
