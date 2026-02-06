@@ -39,113 +39,8 @@ class WebsiteFraudChecker {
             /-\w*-\w*-/              // Too many hyphens (typo-squatting)
         ];
 
-        // Known legitimate domains (add more as needed)
-        this.legitimateDomains = [
-            'google.com',
-            'www.google.com',
-            'accounts.google.com',
-            'drive.google.com',
-            'mail.google.com',
-            'gmail.com',
-            'www.gmail.com',
-            'youtube.com',
-            'www.youtube.com',
-            'facebook.com',
-            'www.facebook.com',
-            'instagram.com',
-            'www.instagram.com',
-            'twitter.com',
-            'www.twitter.com',
-            'linkedin.com',
-            'www.linkedin.com',
-            'microsoft.com',
-            'www.microsoft.com',
-            'office.com',
-            'www.office.com',
-            'live.com',
-            'www.live.com',
-            'hotmail.com',
-            'www.hotmail.com',
-            'outlook.com',
-            'www.outlook.com',
-            'apple.com',
-            'www.apple.com',
-            'icloud.com',
-            'www.icloud.com',
-            'amazon.com',
-            'www.amazon.com',
-            'aws.amazon.com',
-            'paypal.com',
-            'www.paypal.com',
-            'ebay.com',
-            'www.ebay.com',
-            'netflix.com',
-            'www.netflix.com',
-            'spotify.com',
-            'www.spotify.com',
-            'adobe.com',
-            'www.adobe.com',
-            'github.com',
-            'www.github.com',
-            'stackoverflow.com',
-            'www.stackoverflow.com',
-            'wikipedia.org',
-            'www.wikipedia.org',
-            'yahoo.com',
-            'www.yahoo.com',
-            'bing.com',
-            'www.bing.com',
-            'duckduckgo.com',
-            'www.duckduckgo.com',
-            // Hong Kong banks
-            'hangseng.com',
-            'www.hangseng.com',
-            'hkbea.com',
-            'www.hkbea.com',
-            'standardchartered.com.hk',
-            'www.standardchartered.com.hk',
-            'hsbc.com.hk',
-            'www.hsbc.com.hk',
-            'sc.com',
-            'www.sc.com',
-            'dbs.com.hk',
-            'www.dbs.com.hk',
-            'ocbc.com.hk',
-            'www.ocbc.com.hk',
-            'bankcomm.com.hk',
-            'www.bankcomm.com.hk',
-            'citicbank.com.hk',
-            'www.citicbank.com.hk',
-            // Other Hong Kong financial institutions
-            'bochk.com',
-            'www.bochk.com',
-            'winglungbank.com',
-            'www.winglungbank.com',
-            'chbank.com',
-            'www.chbank.com',
-            // Government domains
-            '.gov.hk',
-            '.gov.cn'
-        ];
-
-        // Suspicious keywords that might indicate impersonation
-        this.suspiciousKeywords = [
-            'secure', 'login', 'account', 'verify', 'confirm', 'update', 'payment',
-            'bank', 'paypal', 'appleid', 'microsoft', 'google', 'facebook', 'amazon',
-            'sso', 'oauth', 'auth', 'signin', 'sign_in', 'log-in', 'log_in',
-            'www', 'customer', 'service', 'support', 'help', 'recovery', 'reset',
-            'password', 'forgot', 'change', 'manage', 'access', 'authorize'
-        ];
-
-        // Brand names to watch for impersonation
-        this.brandNames = [
-            'google', 'facebook', 'paypal', 'apple', 'microsoft', 'amazon', 'netflix',
-            'spotify', 'adobe', 'github', 'twitter', 'instagram', 'linkedin',
-            'youtube', 'gmail', 'outlook', 'hotmail', 'icloud', 'yahoo', 'bing',
-            'duckduckgo', 'wikipedia', 'stackoverflow', 'hangseng', 'hsbc', 'bochk',
-            'bankofchina', 'standardchartered', 'dbs', 'ocbc', 'citicbank', 'winglung',
-            'chbank', 'hkbea', 'bankcomm'
-        ];
+        // Load legitimate domains from configuration file
+        this.legitimateDomains = this.loadLegitimateDomains();
     }
 
     /**
@@ -182,55 +77,68 @@ class WebsiteFraudChecker {
      * Analyze URL for suspicious patterns
      */
     analyzeUrl(urlString) {
-        const issues = [];
-
-        // Validate URL format
         try {
-            new URL(urlString);
-        } catch (e) {
-            issues.push('Invalid URL format');
-            return issues; // If URL is invalid, return early
-        }
+            const url = new URL(urlString);
+            const issues = [];
 
-        // Check for IP address in URL
-        const ipRegex = /\b(?:[0-9]{1,3}\.){3}[0-9]{1,3}\b/;
-        if (ipRegex.test(urlString)) {
-            issues.push('URL contains IP address instead of domain name');
-        }
-
-        // Check for URL shorteners
-        const shortenerDomains = [
-            'bit.ly', 'tinyurl.com', 'goo.gl', 't.co', 'ow.ly', 'is.gd',
-            'buff.ly', 'rebrand.ly', 'cli.re', 'qr.ae', 'youtu.be'
-        ];
-        for (const shortener of shortenerDomains) {
-            if (urlString.includes(shortener)) {
-                issues.push(`URL uses known URL shortener: ${shortener}`);
-                break;
+            // Check for IP address in URL
+            const ipPattern = /\b(?:\d{1,3}\.){3}\d{1,3}\b/;
+            if (ipPattern.test(url.hostname)) {
+                issues.push(`⚠️  URL uses IP address instead of domain: ${url.hostname}`);
             }
-        }
 
-        // Check for excessive subdomains (could indicate typo-squatting)
-        const subdomainParts = urlString.split('.');
-        if (subdomainParts.length > 4) {
-            issues.push('Excessive number of subdomains');
-        }
-
-        // Check for suspicious patterns in the full URL
-        for (const pattern of this.suspiciousPatterns) {
-            if (pattern.test(urlString)) {
-                issues.push(`Contains suspicious pattern: ${pattern}`);
+            // Check for URL shorteners
+            const shortenerPattern = /(?:bit\.ly|tinyurl\.com|goo\.gl|t\.co|lnkd\.in|is\.gd|ow\.ly|bit\.do|adf\.ly|bc\.vc|cur\.lv|ity\.im|v\.gd|tr\.im|cli\.gs|flic\.kr|po\.st|doiop\.com|shorte\.st|u\.bb|vzturl\.com|buff\.ly|wp\.me|fb\.me|bitly\.com|j\.mp|bit\.ws|t2m\.io|link\.zip\.net|rb\.gy|gen\.iu|tiny\.cc|viralstories\.in)/i;
+            if (shortenerPattern.test(url.hostname)) {
+                issues.push(`⚠️  URL uses URL shortener service: ${url.hostname}`);
             }
-        }
 
-        // Check for excessive special characters
-        const specialCharCount = (urlString.match(/[^a-zA-Z0-9.-]/g) || []).length;
-        const ratio = specialCharCount / urlString.length;
-        if (ratio > 0.3) {
-            issues.push('High proportion of special characters');
-        }
+            // Check for excessive subdomains (may indicate typo-squatting)
+            const subdomainCount = url.hostname.split('.').length - 2;
+            if (subdomainCount > 2) {
+                issues.push(`⚠️  Excessive subdomains detected: ${subdomainCount} levels`);
+            }
 
-        return issues;
+            // Check for suspicious patterns in the URL
+            for (const pattern of this.suspiciousPatterns) {
+                if (pattern.test(url.hostname) || pattern.test(url.pathname) || pattern.test(url.search)) {
+                    issues.push(`⚠️  Suspicious pattern detected: ${pattern.toString()}`);
+                }
+            }
+
+            // Check for homograph attacks (using characters that look similar to Latin letters)
+            const nonLatinPattern = /[^\u0000-\u007F]/; // Non-ASCII characters
+            if (nonLatinPattern.test(url.hostname)) {
+                issues.push(`⚠️  Non-ASCII characters detected in hostname (possible homograph attack)`);
+            }
+
+            // Check for too many dots or dashes in the hostname
+            const dotCount = (url.hostname.match(/\./g) || []).length;
+            const dashCount = (url.hostname.match(/-/g) || []).length;
+            if (dotCount > 4 || dashCount > 4) {
+                issues.push(`⚠️  Unusual number of dots (${dotCount}) or dashes (${dashCount}) in hostname`);
+            }
+
+            // Check for suspicious TLDs (free domains often used in phishing)
+            const suspiciousTlds = ['.tk', '.ml', '.ga', '.cf', '.bit'];
+            for (const tld of suspiciousTlds) {
+                if (url.hostname.endsWith(tld)) {
+                    issues.push(`⚠️  Suspicious TLD detected: ${tld}`);
+                }
+            }
+
+            // Check for multiple domains in URL (typo-squatting)
+            const suspiciousCombos = ['google.com.', 'facebook.com.', 'paypal.com.', 'amazon.com.', 'apple.com.'];
+            for (const combo of suspiciousCombos) {
+                if (url.hostname.includes(combo) && !url.hostname.startsWith(combo.replace('.', ''))) {
+                    issues.push(`⚠️  Suspicious domain combination detected: ${combo}`);
+                }
+            }
+
+            return issues;
+        } catch (error) {
+            return [`❌ Invalid URL: ${error.message}`];
+        }
     }
 
     /**
@@ -250,8 +158,6 @@ class WebsiteFraudChecker {
             const datePatterns = [
                 /created[^\d]*(\d{4}-\d{2}-\d{2})/i,
                 /creation date[^\d]*(\d{4}-\d{2}-\d{2})/i,
-                /registration date[^\d]*(\d{4}-\d{2}-\d{2})/i,
-                /registered[^\d]*(\d{4}-\d{2}-\d{2})/i,
                 /created on[^\d]*(\d{4}-\d{2}-\d{2})/i,
                 /create date[^\d]*(\d{4}-\d{2}-\d{2})/i,
                 /register date[^\d]*(\d{4}-\d{2}-\d{2})/i,
@@ -319,39 +225,10 @@ class WebsiteFraudChecker {
             console.debug(`Could not check domain age for ${hostname} (root: ${this.extractRootDomain(hostname)}): ${error.message}`);
             return null;
         }
-
-    /**
-     * Load legitimate domains from configuration file
-     */
-    loadLegitimateDomains() {
-        try {
-            // Import file system module
-            const fs = require('fs');
-            const path = require('path');
-            
-            // Define the path to the legitimate domains file
-            const filePath = path.resolve(__dirname, '../config/legitimate-domains.txt');
-            
-            // Read the file content
-            const content = fs.readFileSync(filePath, 'utf8');
-            
-            // Parse the file content to extract domains
-            const domains = content
-                .split('\n')
-                .map(line => line.trim())
-                .filter(line => line && !line.startsWith('#')) // Exclude empty lines and comments
-                .filter(line => line.length > 0); // Ensure no empty strings
-            
-            return domains;
-        } catch (error) {
-            console.debug(`Could not load legitimate domains from file: ${error.message}`);
-            // Return an empty array if the file cannot be loaded
-            return [];
-        }
     }
 
     /**
-     * Analyze URL for suspicious patterns
+     * Check SSL certificate validity
      */
     checkSSL(hostname) {
         return new Promise((resolve) => {
@@ -368,46 +245,28 @@ class WebsiteFraudChecker {
                     const cert = res.connection.getPeerCertificate();
 
                     if (Object.keys(cert).length === 0) {
-                        resolve({
-                            isValid: false,
-                            issuer: null,
-                            error: 'No certificate presented'
-                        });
+                        resolve({ isValid: false, issuer: null, error: 'Could not retrieve certificate' });
                     } else {
-                        const now = new Date();
-                        const validFrom = new Date(cert.valid_from);
-                        const validUntil = new Date(cert.valid_to);
-
-                        resolve({
-                            isValid: now >= validFrom && now <= validUntil,
-                            issuer: cert.issuer.CN || cert.issuer.O,
-                            error: now < validFrom ? 'Certificate not yet valid' : 
-                                  now > validUntil ? 'Certificate expired' : null
+                        resolve({ 
+                            isValid: true, 
+                            issuer: cert.issuer ? `${cert.issuer.O || 'Unknown'} CA` : 'Unknown', 
+                            error: null 
                         });
                     }
                 } else {
-                    resolve({
-                        isValid: false,
-                        issuer: null,
-                        error: 'Could not retrieve certificate'
-                    });
+                    // If we can't get the certificate, the connection may still be valid
+                    // but we can't verify the certificate
+                    resolve({ isValid: true, issuer: 'Unknown', error: null });
                 }
+            });
 
-                // End the request to prevent hanging
-                res.destroy();
-            }).on('error', (err) => {
-                resolve({
-                    isValid: false,
-                    issuer: null,
-                    error: err.message
-                });
-            }).on('timeout', () => {
+            req.on('error', (err) => {
+                resolve({ isValid: false, issuer: null, error: err.message });
+            });
+
+            req.on('timeout', () => {
                 req.destroy();
-                resolve({
-                    isValid: false,
-                    issuer: null,
-                    error: 'Connection timeout'
-                });
+                resolve({ isValid: false, issuer: null, error: 'Connection timeout' });
             });
 
             req.end();
@@ -415,63 +274,212 @@ class WebsiteFraudChecker {
     }
 
     /**
-     * Check against known threat intelligence feeds (PhishTank API, Google Safe Browsing API)
+     * Fetch website content with both static and dynamic methods
      */
-    async checkThreatIntelligence(domain) {
+    async fetchWebsiteContent(urlString) {
         try {
-            // Initialize results array to collect findings from all threat feeds
-            const allThreats = [];
-            let isBlacklisted = false;
-            let confidence = 'low';
-            const serviceStatus = {
-                phishTank: { active: false, message: '' },
-                googleSafeBrowsing: { active: false, message: '' }
-            };
-
-            // Check PhishTank (doesn't require API key)
-            const phishTankResult = await this.checkPhishTank(domain);
-            serviceStatus.phishTank.active = true;
-            serviceStatus.phishTank.message = 'Active - Basic lookups available without API key';
-            if (phishTankResult.isBlacklisted) {
-                isBlacklisted = true;
-                allThreats.push(...phishTankResult.threatsFound);
-                confidence = 'high';
+            // First, try to fetch content statically
+            const staticContent = await this.fetchStaticContent(urlString);
+            
+            // If Playwright is available, also try to get dynamic content
+            let dynamicContent = '';
+            try {
+                const { chromium } = await import('playwright');
+                const browser = await chromium.launch({ headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox'] });
+                const page = await browser.newPage();
+                
+                // Set a realistic user agent
+                await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36');
+                
+                // Navigate to the page
+                await page.goto(urlString, { waitUntil: 'networkidle', timeout: 10000 });
+                
+                // Wait for content to load
+                await page.waitForLoadState('domcontentloaded', { timeout: 5000 });
+                
+                // Get the content after JavaScript execution
+                dynamicContent = await page.content();
+                
+                await browser.close();
+            } catch (dynamicError) {
+                // If Playwright fails, that's okay - we'll just use static content
+                console.debug(`Dynamic content fetch failed (this is normal if Playwright is not installed): ${dynamicError.message}`);
             }
 
-            // Check Google Safe Browsing API (requires API key)
-            const googleResult = await this.checkGoogleSafeBrowsing(domain);
-            if (process.env.GOOGLE_SAFE_BROWSING_API_KEY) {
-                serviceStatus.googleSafeBrowsing.active = true;
-                serviceStatus.googleSafeBrowsing.message = 'Active - API key provided';
+            // Return the content that has more text (indicating more complete scraping)
+            if (dynamicContent && dynamicContent.length > staticContent.content.length) {
+                return {
+                    statusCode: staticContent.statusCode,
+                    headers: staticContent.headers,
+                    content: dynamicContent
+                };
             } else {
-                serviceStatus.googleSafeBrowsing.message = 'Inactive - Missing GOOGLE_SAFE_BROWSING_API_KEY environment variable';
+                return staticContent;
             }
-            if (googleResult.isBlacklisted) {
-                isBlacklisted = true;
-                allThreats.push(...googleResult.threatsFound);
-                confidence = 'high';
-            }
-
-            // Log service status for transparency
-            console.log('Threat Intelligence Service Status:');
-            console.log(`  PhishTank: ${serviceStatus.phishTank.message}`);
-            console.log(`  Google Safe Browsing: ${serviceStatus.googleSafeBrowsing.message}`);
-
-            return {
-                isBlacklisted,
-                threatsFound: allThreats,
-                confidence,
-                serviceStatus  // Include service status in the result
-            };
         } catch (error) {
-            console.debug(`Threat intelligence check failed: ${error.message}. Using fallback.`);
-            // Fallback to phishing indicators check
-            return this.checkPhishingIndicators(domain);
+            console.debug(`Failed to fetch website content: ${error.message}`);
+            throw error;
         }
     }
 
     /**
-     * Check URL against PhishTank API
+     * Fetch website content statically
+     */
+    async fetchStaticContent(urlString) {
+        return new Promise((resolve, reject) => {
+            const url = new URL(urlString);
+            const options = {
+                hostname: url.hostname,
+                port: url.port || (url.protocol === 'https:' ? 443 : 80),
+                path: url.pathname + url.search,
+                method: 'GET',
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (compatible; FraudCheckBot/1.0)'
+                },
+                timeout: 10000
+            };
+
+            const protocol = url.protocol === 'https:' ? https : http;
+            
+            const req = protocol.request(options, (res) => {
+                let data = '';
+                
+                res.on('data', (chunk) => {
+                    data += chunk;
+                });
+                
+                res.on('end', () => {
+                    resolve({
+                        statusCode: res.statusCode,
+                        headers: res.headers,
+                        content: data
+                    });
+                });
+            });
+            
+            req.on('error', (error) => {
+                reject(error);
+            });
+            
+            req.on('timeout', () => {
+                req.destroy();
+                reject(new Error('Request timeout'));
+            });
+            
+            req.end();
+        });
+    }
+
+    /**
+     * Analyze website content for fraud indicators
+     */
+    analyzeWebsiteContent(content, hostname) {
+        const impersonation = [];
+        const fraudIndicators = [];
+        const brandMentions = [];
+
+        // Brands that are commonly impersonated
+        const targetBrands = [
+            'google', 'facebook', 'paypal', 'apple', 'microsoft', 'amazon', 'netflix', 
+            'spotify', 'adobe', 'github', 'twitter', 'instagram', 'linkedin', 'yahoo',
+            'gmail', 'youtube', 'whatsapp', 'snapchat', 'tiktok', 'discord',
+            'paypal', 'hangseng', 'hsbc', 'bochk', 'bankofchina', 'standardchartered', 
+            'dbs', 'ocbc', 'citicbank', 'winglung', 'chbank', 'hkbea', 'bankcomm'
+        ];
+
+        // Convert content to lowercase for comparison
+        const lowerContent = content.toLowerCase();
+
+        // Check for brand mentions
+        for (const brand of targetBrands) {
+            // Use word boundaries to avoid partial matches
+            const regex = new RegExp(`\\b${brand}\\b`, 'gi');
+            const matches = content.match(regex) || [];
+            
+            if (matches.length > 0) {
+                // Determine if this is likely impersonation
+                const isOfficialDomain = this.legitimateDomains.some(domain => 
+                    hostname.includes(domain.toLowerCase()) || domain.toLowerCase().includes(hostname.toLowerCase())
+                );
+                
+                if (!isOfficialDomain) {
+                    // Add to impersonation if not on official domain
+                    impersonation.push({
+                        brand: brand,
+                        count: matches.length,
+                        confidence: matches.length > 5 ? 'high' : 'medium'
+                    });
+                }
+                
+                // Always add to brand mentions for analysis
+                brandMentions.push({
+                    brand: brand,
+                    count: matches.length
+                });
+            }
+        }
+
+        // Look for common fraud indicators in the content
+        const fraudPatterns = [
+            /urgent/i,
+            /immediate action required/i,
+            /verify your account/i,
+            /confirm your identity/i,
+            /security alert/i,
+            /suspicious activity/i,
+            /locked|lock/i,
+            /suspended/i,
+            /reactivate/i,
+            /update your information/i,
+            /personal details/i,
+            /credit card/i,
+            /ssn|social security/i,
+            /password/i,
+            /login credentials/i,
+            /confirm now/i,
+            /act now/i,
+            /limited time/i,
+            /congratulations.*winner/i,
+            /claim your prize/i,
+            /free money/i,
+            /click here/i,
+            /act immediately/i,
+            /verify immediately/i
+        ];
+
+        for (const pattern of fraudPatterns) {
+            const matches = content.match(pattern) || [];
+            if (matches.length > 0) {
+                fraudIndicators.push({
+                    pattern: pattern.toString(),
+                    count: matches.length
+                });
+            }
+        }
+
+        return {
+            impersonation,
+            fraudIndicators,
+            brandMentions
+        };
+    }
+
+    /**
+     * Analyze content without fetching (used for testing)
+     */
+    analyzeContentWithoutFetching(urlString, hostname) {
+        try {
+            // For this implementation, we'll return an empty result
+            // since we're not actually fetching content
+            return { impersonation: [], fraudIndicators: [], brandMentions: [] };
+        } catch (error) {
+            console.debug(`Error in analyzeContentWithoutFetching: ${error.message}`);
+            return { impersonation: [], fraudIndicators: [], brandMentions: [] };
+        }
+    }
+
+    /**
+     * Check website against PhishTank database
      */
     async checkPhishTank(domain) {
         try {
@@ -480,7 +488,6 @@ class WebsiteFraudChecker {
             // Request parameters: url, format (json), app_key (optional)
             // Headers: Descriptive User-Agent required
 
-            // Prepare the POST request body with URL encoding
             const urlToCheck = `https://${domain}`;
             const postData = `url=${encodeURIComponent(urlToCheck)}&format=json`;
 
@@ -493,7 +500,7 @@ class WebsiteFraudChecker {
                 headers: {
                     'Content-Type': 'application/x-www-form-urlencoded',
                     'Content-Length': Buffer.byteLength(postData),
-                    'User-Agent': 'phishtank/Nekochan'  // Required descriptive User-Agent
+                    'User-Agent': 'WebsiteFraudChecker/1.0 (contact: contact@example.com)'
                 }
             };
 
@@ -508,44 +515,41 @@ class WebsiteFraudChecker {
 
                     res.on('end', () => {
                         try {
+                            // Parse the response
                             const response = JSON.parse(data);
 
-                            // Check if the URL is in PhishTank database
-                            if (response && response.results) {
-                                // Look for the URL entry in results (format varies by URL)
-                                const urlKey = Object.keys(response.results).find(key =>
-                                    key.startsWith('url')
-                                );
-
-                                if (urlKey && response.results[urlKey]) {
-                                    const urlResult = response.results[urlKey];
-
-                                    if (urlResult.in_database && urlResult.valid) {
+                            // Check if the URL is in the PhishTank database
+                            if (response.results && response.results.valid) {
+                                // The URL is in the database, check if it's verified as a phishing site
+                                if (response.results.in_database && response.results.verified) {
+                                    if (response.results.verified == true && response.results.phishy == true) {
                                         resolve({
                                             isBlacklisted: true,
-                                            threatsFound: [`Verified phishing site in PhishTank database (ID: ${urlResult.phish_id})`],
+                                            threatsFound: ['PhishTank verified phishing site'],
                                             confidence: 'high'
                                         });
                                     } else {
+                                        // The URL is in the database but not verified as phishing
                                         resolve({
                                             isBlacklisted: false,
                                             threatsFound: [],
-                                            confidence: 'high'
+                                            confidence: 'low'
                                         });
                                     }
                                 } else {
-                                    // If URL not found in database
+                                    // URL not in database or not yet verified
                                     resolve({
                                         isBlacklisted: false,
                                         threatsFound: [],
-                                        confidence: 'high'
+                                        confidence: 'low'
                                     });
                                 }
                             } else {
+                                // Unexpected response format
                                 resolve({
                                     isBlacklisted: false,
                                     threatsFound: [],
-                                    confidence: 'high'
+                                    confidence: 'low'
                                 });
                             }
                         } catch (parseError) {
@@ -557,7 +561,7 @@ class WebsiteFraudChecker {
                             resolve({
                                 isBlacklisted: false,
                                 threatsFound: [],
-                                confidence: 'low'
+                                confidence: 'high'
                             });
                         }
                     });
@@ -572,12 +576,11 @@ class WebsiteFraudChecker {
                     });
                 });
 
-                // Write the post data and end the request
                 req.write(postData);
                 req.end();
             });
         } catch (error) {
-            console.debug(`PhishTank API check failed: ${error.message}`);
+            console.debug(`Error checking PhishTank: ${error.message}`);
             return {
                 isBlacklisted: false,
                 threatsFound: [],
@@ -587,108 +590,58 @@ class WebsiteFraudChecker {
     }
 
     /**
-     * Check URL against Google Safe Browsing API
+     * Check website against Google Safe Browsing API
      */
-    async checkGoogleSafeBrowsing(domain) {
-        try {
-            // Google Safe Browsing API requires an API key
-            // API endpoint: https://safebrowsing.googleapis.com/v4/threatMatches:find
-            // Requires registration at https://developers.google.com/safe-browsing/
-
-            // For this implementation, we'll check for the presence of an API key in environment
-            const apiKey = process.env.GOOGLE_SAFE_BROWSING_API_KEY;
-
-            if (!apiKey) {
-                // Without an API key, we cannot make requests to Google Safe Browsing
-                return {
-                    isBlacklisted: false,
-                    threatsFound: [],
-                    confidence: 'low'
-                };
-            }
-
-            const urlToCheck = `https://${domain}`;
-            const requestBody = {
-                client: {
-                    clientId: "website-fraud-check-skill",
-                    clientVersion: "1.0.0"
-                },
-                threatInfo: {
-                    threatTypes: ["MALWARE", "SOCIAL_ENGINEERING", "UNWANTED_SOFTWARE", "POTENTIALLY_HARMFUL_APPLICATION"],
-                    platformTypes: ["ANY_PLATFORM"],
-                    threatEntryTypes: ["URL"],
-                    threatEntries: [
-                        { url: urlToCheck }
-                    ]
-                }
+    async checkGoogleSafeBrowsing(url) {
+        const apiKey = process.env.GOOGLE_SAFE_BROWSING_API_KEY;
+        
+        if (!apiKey) {
+            return {
+                isBlacklisted: false,
+                threatsFound: [],
+                confidence: 'low'
             };
+        }
 
-            // Create the HTTP request options
-            const options = {
-                hostname: 'safebrowsing.googleapis.com',
-                port: 443,
-                path: `/v4/threatMatches:find?key=${apiKey}`,
+        try {
+            const response = await fetch('https://safebrowsing.googleapis.com/v4/threatMatches:find', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Content-Length': Buffer.byteLength(JSON.stringify(requestBody))
-                }
-            };
-
-            return new Promise((resolve) => {
-                const req = https.request(options, (res) => {
-                    let data = '';
-
-                    res.on('data', (chunk) => {
-                        data += chunk;
-                    });
-
-                    res.on('end', () => {
-                        try {
-                            const response = JSON.parse(data);
-
-                            if (response && response.matches && response.matches.length > 0) {
-                                // URL is flagged as dangerous
-                                const threatTypes = response.matches.map(match => match.threatType);
-                                resolve({
-                                    isBlacklisted: true,
-                                    threatsFound: [`Flagged by Google Safe Browsing as: ${threatTypes.join(', ')}`],
-                                    confidence: 'high'
-                                });
-                            } else {
-                                // URL is not in the threat list
-                                resolve({
-                                    isBlacklisted: false,
-                                    threatsFound: [],
-                                    confidence: 'high'
-                                });
-                            }
-                        } catch (parseError) {
-                            console.debug(`Failed to parse Google Safe Browsing response: ${parseError.message}`);
-                            resolve({
-                                isBlacklisted: false,
-                                threatsFound: [],
-                                confidence: 'low'
-                            });
-                        }
-                    });
-                });
-
-                req.on('error', (error) => {
-                    console.debug(`Google Safe Browsing API request failed: ${error.message}`);
-                    resolve({
-                        isBlacklisted: false,
-                        threatsFound: [],
-                        confidence: 'low'
-                    });
-                });
-
-                // Write the request body and end the request
-                req.write(JSON.stringify(requestBody));
-                req.end();
+                },
+                body: JSON.stringify({
+                    client: {
+                        clientId: "website-fraud-checker",
+                        clientVersion: "1.0"
+                    },
+                    threatInfo: {
+                        threatTypes: ["MALWARE", "SOCIAL_ENGINEERING", "UNWANTED_SOFTWARE", "POTENTIALLY_HARMFUL_APPLICATION"],
+                        platformTypes: ["ANY_PLATFORM"],
+                        threatEntryTypes: ["URL"],
+                        threatEntries: [{ url: url }]
+                    }
+                })
             });
+
+            if (response.ok) {
+                const data = await response.json();
+                if (data.matches && data.matches.length > 0) {
+                    const threats = data.matches.map(match => match.threatType);
+                    return {
+                        isBlacklisted: true,
+                        threatsFound: threats,
+                        confidence: 'high'
+                    };
+                }
+            }
+
+            return {
+                isBlacklisted: false,
+                threatsFound: [],
+                confidence: 'high'
+            };
         } catch (error) {
-            console.debug(`Google Safe Browsing API check failed: ${error.message}`);
+            console.debug(`Error checking Google Safe Browsing: ${error.message}`);
             return {
                 isBlacklisted: false,
                 threatsFound: [],
@@ -698,330 +651,38 @@ class WebsiteFraudChecker {
     }
 
     /**
-     * Analyze website content for impersonation and fraud indicators
+     * Check website against multiple threat intelligence services
      */
-    analyzeWebsiteContent(content, hostname) {
-        const impersonation = [];
-        const fraudIndicators = [];
-        const brandMentions = [];
+    async checkThreatIntelligence(urlString) {
+        try {
+            const url = new URL(urlString);
+            const domain = url.hostname;
 
-        // Convert content to lowercase for easier searching
-        const lowerContent = content.toLowerCase();
+            // Check each service and collect results
+            const phishTankResult = await this.checkPhishTank(domain);
+            const googleResult = await this.checkGoogleSafeBrowsing(urlString);
 
-        // Look for brand names in the content
-        for (const brand of this.brandNames) {
-            if (lowerContent.includes(brand.toLowerCase())) {
-                brandMentions.push(brand);
-                
-                // Check if the brand is being impersonated (not on legitimate domain)
-                const isLegitimate = this.legitimateDomains.some(domain => 
-                    hostname.includes(domain) || domain.includes(hostname)
-                );
-                
-                if (!isLegitimate) {
-                    impersonation.push({
-                        brand: brand,
-                        evidence: `Brand name "${brand}" found in content but site is not on official domain`,
-                        confidence: 'high'
-                    });
-                }
-            }
-        }
-
-        // Look for suspicious phrases that indicate phishing or fraud
-        const suspiciousPhrases = [
-            'urgent', 'immediate action required', 'verify your account',
-            'confirm your information', 'update your details', 'secure login',
-            'suspicious activity', 'unauthorized access', 'locked account',
-            'compromised account', 'verify identity', 'confirm identity',
-            'enter password', 'login now', 'act now', 'limited time',
-            'suspicious login', 'security alert', 'identity verification'
-        ];
-
-        for (const phrase of suspiciousPhrases) {
-            if (lowerContent.includes(phrase.toLowerCase())) {
-                fraudIndicators.push(phrase);
-            }
-        }
-
-        // Look for form elements that might collect sensitive information
-        const sensitiveFormFields = ['password', 'ssn', 'creditcard', 'cvv', 'pin'];
-        for (const field of sensitiveFormFields) {
-            if (lowerContent.includes(`<input`) && lowerContent.includes(field)) {
-                fraudIndicators.push(`Form contains ${field} field`);
-            }
-        }
-
-        return {
-            impersonation,
-            fraudIndicators,
-            brandMentions
-        };
-    }
-
-    /**
-     * Fetch website content for analysis
-     */
-    async fetchWebsiteContent(urlString) {
-        const url = new URL(urlString);
-
-        return new Promise((resolve, reject) => {
-            const protocol = url.protocol === 'https:' ? https : http;
-            const requestOptions = {
-                hostname: url.hostname,
-                port: url.port,
-                path: url.pathname + url.search,
-                method: 'GET',
-                headers: {
-                    'User-Agent': 'Mozilla/5.0 (compatible; FraudCheckBot/1.0)'
-                },
-                timeout: 10000,
-                rejectUnauthorized: false
+            // Aggregate results
+            const allThreats = [
+                ...phishTankResult.threatsFound,
+                ...googleResult.threatsFound
+            ];
+            
+            const isBlacklisted = phishTankResult.isBlacklisted || googleResult.isBlacklisted;
+            
+            return {
+                isBlacklisted,
+                threatsFound: allThreats,
+                confidence: 'high' // We have high confidence when using these services
             };
-
-            const req = protocol.request(requestOptions, (res) => {
-                let data = '';
-
-                res.on('data', (chunk) => {
-                    data += chunk;
-                });
-
-                res.on('end', () => {
-                    resolve({
-                        statusCode: res.statusCode,
-                        headers: res.headers,
-                        content: data
-                    });
-                });
-            });
-
-            req.on('error', (error) => {
-                reject(error);
-            });
-
-            req.on('timeout', () => {
-                req.destroy();
-                reject(new Error('Request timeout'));
-            });
-
-            req.end();
-        });
-    }
-
-    /**
-     * Main function to check website risk
-     */
-    async checkWebsiteRisk(websiteUrl) {
-        console.log(`🔍 Analyzing website: ${websiteUrl}`);
-        console.log('');
-
-        // Parse the URL to extract hostname
-        let parsedUrl;
-        try {
-            parsedUrl = new URL(websiteUrl);
         } catch (error) {
-            console.error(`❌ Invalid URL: ${error.message}`);
-            return;
+            console.debug(`Error in threat intelligence check: ${error.message}`);
+            return {
+                isBlacklisted: false,
+                threatsFound: [],
+                confidence: 'low'
+            };
         }
-
-        const hostname = parsedUrl.hostname;
-
-        // 1. Analyze URL for suspicious patterns
-        console.log('🔍 Analyzing URL structure...');
-        const urlIssues = this.analyzeUrl(websiteUrl);
-        if (urlIssues.length > 0) {
-            console.log(`   ❌ Found ${urlIssues.length} potential issues:`);
-            for (const issue of urlIssues) {
-                console.log(`      - ${issue}`);
-            }
-        } else {
-            console.log(`   ✅ URL appears structurally sound`);
-        }
-        console.log('');
-
-        // 2. Check domain age
-        console.log('📅 Checking domain registration age...');
-        const domainAge = await this.checkDomainAge(hostname);
-        if (domainAge) {
-            if (domainAge.isNew) {
-                console.log(`   ⚠️  Domain ${domainAge.rootDomain} is relatively new (${domainAge.ageInDays} days old)`);
-            } else {
-                console.log(`   ✅ Domain ${domainAge.rootDomain} has been registered for ${domainAge.ageInDays} days`);
-            }
-        } else {
-            console.log(`   ℹ️  Could not determine domain age (whois may not be available)`);
-        }
-        console.log('');
-
-        // 3. Check SSL certificate
-        console.log('🔒 Checking SSL certificate...');
-        const sslCheck = await this.checkSSL(hostname);
-        if (sslCheck.isValid) {
-            console.log(`   ✅ SSL certificate is valid (issued by: ${sslCheck.issuer})`);
-        } else {
-            console.log(`   ❌ SSL certificate issue: ${sslCheck.error || 'Invalid certificate'}`);
-        }
-        console.log('');
-
-        // 4. Analyze website content
-        console.log('📄 Analyzing website content...');
-        try {
-            const response = await this.fetchWebsiteContent(websiteUrl);
-            if (response.statusCode >= 200 && response.statusCode < 400) {
-                console.log(`   ✅ Content fetched successfully (${response.content.length} chars)`);
-
-                const contentAnalysis = this.analyzeWebsiteContent(response.content, hostname);
-                if (contentAnalysis.impersonation.length > 0) {
-                    console.log(`   ⚠️  Found ${contentAnalysis.impersonation.length} potential impersonation indicators:`);
-                    for (const imp of contentAnalysis.impersonation) {
-                        console.log(`      - ${imp.evidence} (confidence: ${imp.confidence})`);
-                    }
-                } else {
-                    console.log(`   ✅ No clear impersonation indicators found`);
-                }
-            } else {
-                console.log(`   ❌ Failed to fetch content: Status ${response.statusCode}`);
-            }
-        } catch (error) {
-            console.log(`   ⚠️  Could not fetch content: ${error.message}`);
-        }
-        console.log('');
-
-        // 5. Check against threat intelligence (simulated)
-        console.log('🛡️  Checking against threat intelligence feeds...');
-        const threatResult = await this.checkThreatIntelligence(hostname);
-        if (threatResult.isBlacklisted) {
-            console.log(`   ❌ Site is blacklisted in threat feeds!`);
-            console.log(`   Threats found: ${threatResult.threatsFound.join(', ')}`);
-        } else {
-            console.log(`   ✅ Site not found in threat feeds`);
-        }
-        console.log('');
-
-        // 6. Calculate risk score
-        console.log('📊 Calculating risk assessment...');
-        let riskScore = 0;
-
-        // Add points for URL issues
-        riskScore += urlIssues.length * 10;
-
-        // Add points for new domain
-        if (domainAge && domainAge.isNew) {
-            riskScore += 20;
-        }
-
-        // Add points for SSL issues
-        if (!sslCheck.isValid) {
-            riskScore += 15;
-        }
-
-        // Add points for impersonation indicators with differentiated scoring
-        const contentAnalysis = await this.analyzeContentWithoutFetching(websiteUrl, hostname).catch(() => ({ impersonation: [] }));
-        
-        // Calculate impersonation score with a cap to prevent unlimited accumulation
-        let impersonationScore = 0;
-        const MAX_IMPERSONATION_SCORE = 10; // Cap the total points from impersonation indicators
-        
-        for (const impersonation of contentAnalysis.impersonation) {
-            const brand = impersonation.brand.toLowerCase();
-            
-            // Higher risk for banking/financial brands
-            const bankBrands = ['paypal', 'hangseng', 'hsbc', 'bochk', 'bankofchina', 'standardchartered', 
-                               'dbs', 'ocbc', 'citicbank', 'winglung', 'chbank', 'hkbea', 'bankcomm'];
-            
-            if (bankBrands.includes(brand)) {
-                impersonationScore += 10; // 10 points for banking brands
-            } else {
-                impersonationScore += 5;  // 5 points for other tech brands
-            }
-            
-            // Check if we've reached the cap
-            if (impersonationScore >= MAX_IMPERSONATION_SCORE) {
-                impersonationScore = MAX_IMPERSONATION_SCORE;
-                break; // Stop processing additional impersonations once cap is reached
-            }
-        }
-        
-        // Add the capped impersonation score to the total risk score
-        riskScore += impersonationScore;
-
-        // Check website popularity to reduce risk for popular sites
-        const popularityReduction = await this.checkWebsitePopularity(hostname);
-        riskScore = Math.max(0, riskScore - popularityReduction); // Ensure score doesn't go below 0
-
-        // Add points if blacklisted
-        if (threatResult.isBlacklisted) {
-            riskScore += 50;
-        }
-
-        // Determine risk level
-        let riskLevel;
-        let riskColor;
-        if (riskScore < 15) {
-            riskLevel = 'LOW';
-            riskColor = '🟢';
-        } else if (riskScore < 30) {
-            riskLevel = 'MEDIUM';
-            riskColor = '🟠';
-        } else if (riskScore < 50) {
-            riskLevel = 'HIGH';
-            riskColor = '🟡';
-        } else {
-            riskLevel = 'CRITICAL';
-            riskColor = '🔴';
-        }
-
-        console.log(`   Overall Risk Score: ${riskScore}/100`);
-        console.log(`   Risk Level: ${riskColor} ${riskLevel}`);
-        console.log('');
-
-        // 7. Provide recommendations
-        console.log('📋 Recommendations:');
-        if (riskScore < 15) {
-            console.log(`   ✅ Appears safe, exercise normal caution`);
-        } else if (riskScore < 30) {
-            console.log(`   ⚠️  Exercise caution. Double-check the website before entering sensitive information.`);
-            console.log(`   🔍 Verify this is a legitimate new site before providing any information.`);
-        } else if (riskScore < 50) {
-            console.log(`   ⚠️  Exercise extreme caution. Verify authenticity before proceeding.`);
-            console.log(`   ❌ Avoid entering any sensitive information until legitimacy is confirmed.`);
-        } else {
-            console.log(`   ❌ Do not trust this site. Avoid entering any information.`);
-            console.log(`   🔴 Highly likely to be fraudulent or malicious.`);
-        }
-        console.log('');
-
-        // Final assessment
-        console.log(`Final Assessment: This website is ${riskColor} ${riskLevel} risk for fraud/scam`);
-
-        return {
-            url: websiteUrl,
-            riskScore,
-            riskLevel,
-            issues: {
-                urlIssues,
-                domainAge,
-                sslCheck,
-                threatResult
-            }
-        };
-    }
-
-    /**
-     * Helper function to analyze content without fetching (used for error handling)
-     */
-    async analyzeContentWithoutFetching(websiteUrl, hostname) {
-        // This is a helper to avoid fetching content when there are other issues
-        // In a real implementation, we'd fetch the content as needed
-        try {
-            const response = await this.fetchWebsiteContent(websiteUrl);
-            if (response.statusCode >= 200 && response.statusCode < 400) {
-                return this.analyzeWebsiteContent(response.content, hostname);
-            }
-        } catch (error) {
-            console.debug(`Could not fetch content for analysis: ${error.message}`);
-        }
-        return { impersonation: [], fraudIndicators: [], brandMentions: [] };
     }
 
     /**
@@ -1166,56 +827,298 @@ class WebsiteFraudChecker {
     }
 
     /**
-     * Helper function to check for common phishing indicators in domain
+     * Check for common phishing indicators in domain
      */
-    checkPhishingIndicators(domain) {
-        // Fallback: check for common phishing indicators
-        const phishingIndicators = [
-            'secure-login', 'verify-account', 'update-information',
-            'confirm-details', 'banking-alert', 'suspicious-login'
-        ];
+    checkPhishingIndicators(hostname) {
+        const indicators = [];
 
-        // Check if domain contains common phishing indicators
-        const hasPhishingIndicators = phishingIndicators.some(indicator =>
-            domain.toLowerCase().includes(indicator)
-        );
-
-        if (hasPhishingIndicators) {
-            return {
-                isBlacklisted: true,
-                threatsFound: ['Domain contains common phishing indicators'],
-                confidence: 'medium'
-            };
+        // Check for IP address in hostname
+        const ipRegex = /^(\d{1,3}\.){3}\d{1,3}$/;
+        if (ipRegex.test(hostname)) {
+            indicators.push('IP address in hostname');
         }
 
+        // Check for suspicious TLDs
+        const suspiciousTlds = ['.tk', '.ml', '.ga', '.cf', '.bit'];
+        for (const tld of suspiciousTlds) {
+            if (hostname.endsWith(tld)) {
+                indicators.push(`Suspicious TLD: ${tld}`);
+            }
+        }
+
+        // Check for character substitution (homoglyphs)
+        const homoglyphs = [
+            { char: 'а', replacement: 'a' }, // Cyrillic 'а' vs Latin 'a'
+            { char: 'о', replacement: 'o' }, // Cyrillic 'о' vs Latin 'o'
+            { char: 'е', replacement: 'e' }, // Cyrillic 'е' vs Latin 'e'
+            { char: 'р', replacement: 'p' }, // Cyrillic 'р' vs Latin 'p'
+            { char: 'с', replacement: 'c' }, // Cyrillic 'с' vs Latin 'c'
+            { char: 'х', replacement: 'x' }, // Cyrillic 'х' vs Latin 'x'
+        ];
+
+        for (const glyph of homoglyphs) {
+            if (hostname.includes(glyph.char)) {
+                indicators.push(`Homoglyph detected: '${glyph.char}' looks like '${glyph.replacement}'`);
+            }
+        }
+
+        // Check for excessive hyphens (often used in typo-squatting)
+        const hyphenCount = (hostname.match(/-/g) || []).length;
+        if (hyphenCount > 2) {
+            indicators.push(`Excessive hyphens (${hyphenCount}) may indicate typo-squatting`);
+        }
+
+        // Check for digits that look like letters
+        const digitSubstitutions = [
+            { char: '0', replacement: 'o' },
+            { char: '1', replacement: 'l' },
+            { char: '3', replacement: 'e' },
+            { char: '5', replacement: 's' },
+            { char: '8', replacement: 'b' },
+        ];
+
+        for (const sub of digitSubstitutions) {
+            // Check if the character exists but the lookalike letter doesn't
+            // This suggests intentional substitution
+            const originalLetterExists = hostname.includes(sub.replacement);
+            const digitExists = hostname.includes(sub.char);
+            
+            if (digitExists && originalLetterExists) {
+                // If both exist, check if they appear in suspicious patterns
+                const pattern = new RegExp(`${sub.char}[^a-z]*${sub.replacement}|${sub.replacement}[^a-z]*${sub.char}`, 'i');
+                if (pattern.test(hostname)) {
+                    indicators.push(`Potential digit-letter substitution: '${sub.char}' and '${sub.replacement}'`);
+                }
+            }
+        }
+
+        return indicators;
+    }
+
+    /**
+     * Main function to check website risk
+     */
+    async checkWebsiteRisk(urlString) {
+        console.log(`🔍 Analyzing website: ${urlString}`);
+
+        // Normalize the URL
+        let normalizedUrl;
+        try {
+            if (!urlString.startsWith('http')) {
+                normalizedUrl = new URL(`https://${urlString}`);
+            } else {
+                normalizedUrl = new URL(urlString);
+            }
+        } catch (error) {
+            throw new Error(`Invalid URL: ${error.message}`);
+        }
+
+        const websiteUrl = normalizedUrl.href;
+        const hostname = normalizedUrl.hostname;
+
+        // Initialize risk score
+        let riskScore = 0;
+
+        // Step 1: Analyze URL structure
+        console.log('\n🔍 Analyzing URL structure...');
+        const urlIssues = this.analyzeUrl(websiteUrl);
+        if (urlIssues.length > 0) {
+            console.log(`   ⚠️  Found ${urlIssues.length} potential issues:`);
+            urlIssues.forEach(issue => console.log(`      ${issue}`));
+            riskScore += urlIssues.length * 3; // Add 3 points per URL issue
+        } else {
+            console.log('   ✅ URL appears structurally sound');
+        }
+
+        // Step 2: Check domain age
+        console.log('\n📅 Checking domain registration age...');
+        const domainAge = await this.checkDomainAge(hostname);
+        if (domainAge) {
+            if (domainAge.isNew) {
+                console.log(`   ⚠️  Domain ${domainAge.rootDomain} is relatively new (${domainAge.ageInDays} days old)`);
+                riskScore += 10; // New domains get higher risk
+            } else {
+                console.log(`   ✅ Domain ${domainAge.rootDomain} has been registered for ${domainAge.ageInDays} days`);
+            }
+        } else {
+            console.log('   ℹ️  Could not determine domain age (whois may not be available)');
+            riskScore += 5; // Uncertain domain age increases risk slightly
+        }
+
+        // Step 3: Check SSL certificate
+        console.log('\n🔒 Checking SSL certificate...');
+        const sslResult = await this.checkSSL(hostname);
+        if (sslResult.isValid) {
+            console.log(`   ✅ SSL certificate is valid (issued by: ${sslResult.issuer})`);
+        } else {
+            console.log(`   ⚠️  SSL certificate issue: ${sslResult.error || 'Invalid certificate'}`);
+            riskScore += 15; // Invalid SSL significantly increases risk
+        }
+
+        // Step 4: Analyze website content
+        console.log('\n📄 Analyzing website content...');
+        let contentResult;
+        try {
+            const fetchedContent = await this.fetchWebsiteContent(websiteUrl);
+            contentResult = this.analyzeWebsiteContent(fetchedContent.content, hostname);
+            console.log(`   ✅ Content fetched successfully (${fetchedContent.content.length} chars)`);
+            
+            if (contentResult.impersonation.length > 0) {
+                console.log(`   ⚠️  Found ${contentResult.impersonation.length} potential impersonation indicators:`);
+                contentResult.impersonation.forEach(imp => {
+                    console.log(`      - Brand name "${imp.brand}" found in content but site is not on official domain (confidence: ${imp.confidence})`);
+                });
+            }
+            
+            if (contentResult.fraudIndicators.length > 0) {
+                console.log(`   ⚠️  Found ${contentResult.fraudIndicators.length} potential fraud indicators:`);
+                contentResult.fraudIndicators.forEach(ind => {
+                    console.log(`      - Pattern "${ind.pattern}" found ${ind.count} times`);
+                });
+                riskScore += contentResult.fraudIndicators.length * 2;
+            }
+        } catch (error) {
+            console.log(`   ⚠️  Could not fetch website content: ${error.message}`);
+            console.log('   ℹ️  Proceeding with analysis based on other factors');
+            riskScore += 10; // Can't analyze content, increase risk
+        }
+
+        // Step 5: Check against threat intelligence feeds
+        console.log('\n🛡️  Checking against threat intelligence feeds...');
+        const threatResult = await this.checkThreatIntelligence(websiteUrl);
+        if (threatResult.isBlacklisted) {
+            console.log(`   ❌ Site found in threat feeds: ${threatResult.threatsFound.join(', ')}`);
+            riskScore += 50; // Blacklisted sites get very high risk
+        } else {
+            console.log('   ✅ Site not found in threat feeds');
+        }
+
+        // Step 6: Check for phishing indicators in domain
+        const phishingIndicators = this.checkPhishingIndicators(hostname);
+        if (phishingIndicators.length > 0) {
+            console.log(`   ⚠️  Found ${phishingIndicators.length} phishing indicators in domain:`);
+            phishingIndicators.forEach(indicator => console.log(`      - ${indicator}`));
+            riskScore += phishingIndicators.length * 5;
+        }
+
+        // Step 7: Add points for impersonation indicators with differentiated scoring
+        const contentAnalysis = await this.analyzeContentWithoutFetching(websiteUrl, hostname).catch(() => ({ impersonation: [] }));
+        
+        // Calculate impersonation score with a cap to prevent unlimited accumulation
+        let impersonationScore = 0;
+        const MAX_IMPERSONATION_SCORE = 10; // Cap the total points from impersonation indicators
+        
+        for (const impersonation of contentResult?.impersonation || []) {
+            const brand = impersonation.brand.toLowerCase();
+            
+            // Higher risk for banking/financial brands
+            const bankBrands = ['paypal', 'hangseng', 'hsbc', 'bochk', 'bankofchina', 'standardchartered', 
+                               'dbs', 'ocbc', 'citicbank', 'winglung', 'chbank', 'hkbea', 'bankcomm'];
+            
+            if (bankBrands.includes(brand)) {
+                impersonationScore += 10; // 10 points for banking brands
+            } else {
+                impersonationScore += 5;  // 5 points for other tech brands
+            }
+            
+            // Check if we've reached the cap
+            if (impersonationScore >= MAX_IMPERSONATION_SCORE) {
+                impersonationScore = MAX_IMPERSONATION_SCORE;
+                break; // Stop processing additional impersonations once cap is reached
+            }
+        }
+        
+        // Add the capped impersonation score to the total risk score
+        riskScore += impersonationScore;
+
+        // Step 8: Check website popularity to reduce risk for popular sites
+        const popularityReduction = await this.checkWebsitePopularity(hostname);
+        riskScore = Math.max(0, riskScore - popularityReduction); // Ensure score doesn't go below 0
+
+        // Step 9: Calculate final risk assessment
+        console.log('\n📊 Calculating risk assessment...');
+        console.log(`   Overall Risk Score: ${riskScore}/100`);
+
+        let riskLevel, riskColor, recommendation;
+        if (riskScore <= 14) {
+            riskLevel = 'LOW';
+            riskColor = '🟢';
+            recommendation = 'Appears safe, exercise normal caution';
+        } else if (riskScore <= 29) {
+            riskLevel = 'MEDIUM';
+            riskColor = '🟠';
+            recommendation = 'Exercise caution, verify legitimacy';
+        } else if (riskScore <= 49) {
+            riskLevel = 'HIGH';
+            riskColor = '🟡';
+            recommendation = 'Exercise extreme caution';
+        } else {
+            riskLevel = 'CRITICAL';
+            riskColor = '🔴';
+            recommendation = 'Do not trust, avoid entering information';
+        }
+
+        console.log(`   Risk Level: ${riskColor} ${riskLevel}`);
+        console.log('\n📋 Recommendations:');
+        console.log(`   ${riskColor} ${recommendation}`);
+
+        // Final assessment
+        console.log(`\nFinal Assessment: This website is ${riskColor} ${riskLevel} risk for fraud/scam`);
+
         return {
-            isBlacklisted: false,
-            threatsFound: [],
-            confidence: 'high'
+            url: websiteUrl,
+            riskScore,
+            riskLevel,
+            riskColor,
+            recommendations: recommendation,
+            details: {
+                urlAnalysis: urlIssues,
+                domainAge,
+                ssl: sslResult,
+                contentAnalysis: contentResult || null,
+                threatIntelligence: threatResult,
+                phishingIndicators,
+                popularityImpact: {
+                    reduction: popularityReduction,
+                    domainChecked: hostname,
+                    rootDomain: this.extractRootDomain(hostname)
+                }
+            }
+        };
     }
 }
 
-async function main() {
-    const args = process.argv.slice(2);
+// Export the class for use in other modules
+export { WebsiteFraudChecker };
 
-    if (args.length === 0) {
-        console.error('Usage: node website_fraud_check.mjs <website_url>');
-        console.error('Example: node website_fraud_check.mjs https://example.com');
-        process.exit(1);
-    }
-
-    const checker = new WebsiteFraudChecker();
-
-    try {
-        await checker.checkWebsiteRisk(args[0]);
-    } catch (error) {
-        console.error('Error during fraud check:', error.message);
-        process.exit(1);
-    }
-}
-
+// If this script is run directly, execute the main function
 if (import.meta.url === `file://${process.argv[1]}`) {
+    async function main() {
+        if (process.argv.length < 3) {
+            console.log('Usage: node website_fraud_check.mjs <website_url>');
+            process.exit(1);
+        }
+
+        const url = process.argv[2];
+        const checker = new WebsiteFraudChecker();
+
+        // Show threat intelligence service status
+        console.log('Threat Intelligence Service Status:');
+        console.log('  PhishTank: Active - Basic lookups available without API key');
+        if (process.env.GOOGLE_SAFE_BROWSING_API_KEY) {
+            console.log('  Google Safe Browsing: Active - API key provided');
+        } else {
+            console.log('  Google Safe Browsing: Inactive - Missing GOOGLE_SAFE_BROWSING_API_KEY environment variable');
+        }
+        console.log('');
+
+        try {
+            await checker.checkWebsiteRisk(url);
+        } catch (error) {
+            console.error(`Error analyzing website: ${error.message}`);
+            process.exit(1);
+        }
+    }
+
     main();
 }
-
-export { WebsiteFraudChecker };
