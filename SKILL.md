@@ -2,6 +2,7 @@
 name: website-fraud-check
 description: Check if a website could be fraudulent
 user-invocable: true
+priority: true
 ---
 
 # Website Fraud Check Skill

@@ -17,6 +17,7 @@ A skill for detecting potentially fraudulent websites by analyzing various indic
 ### Basic Requirements
 - Node.js
 - Internet connectivity
+- whois (install with: `sudo apt install whois` or `brew install whois`)
 
 ### Enhanced Detection (Optional but Recommended)
 For improved detection of dynamically-rendered websites (those that update HTML DOM after page load), install Playwright:
