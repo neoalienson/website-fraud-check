@@ -155,52 +155,58 @@ class WebsiteFraudChecker {
             const result = execSync(`whois "${rootDomain}"`, { encoding: 'utf8', timeout: 10000 });
             
             // Look for creation/registration date patterns in the whois output
+            // NOTE: Order matters! More specific patterns should come before general ones
             const datePatterns = [
-                /created[^\d]*(\d{4}-\d{2}-\d{2})/i,
-                /creation date[^\d]*(\d{4}-\d{2}-\d{2})/i,
-                /created on[^\d]*(\d{4}-\d{2}-\d{2})/i,
-                /create date[^\d]*(\d{4}-\d{2}-\d{2})/i,
-                /register date[^\d]*(\d{4}-\d{2}-\d{2})/i,
-                /registrar registration[^\d]*(\d{4}-\d{2}-\d{2})/i,
-                /Registration Date[^\d]*(\d{4}-\d{2}-\d{2})/i,  // Additional pattern for .ai domains
-                /Domain Registration Date[^\d]*(\d{4}-\d{2}-\d{2})/i,  // Another common pattern
-                /Created on[^\d]*(\d{4}-\d{2}-\d{2})/i,  // Another variation
+                /Creation Date[^\d]*(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z)/i,  // ISO format with timestamp (T and Z) - specific first
+                /Updated Date[^\d]*(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z)/i,  // ISO format with timestamp (T and Z) - specific first
+                /Registry Expiry Date[^\d]*(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z)/i,  // ISO format with timestamp (T and Z) - specific first
+                /created[^\d]*(\d{4}-\d{2}-\d{2})/i,  // General pattern - less specific
+                /creation date[^\d]*(\d{4}-\d{2}-\d{2})/i,  // General pattern - less specific
+                /created on[^\d]*(\d{4}-\d{2}-\d{2})/i,  // General pattern - less specific
+                /create date[^\d]*(\d{4}-\d{2}-\d{2})/i,  // General pattern - less specific
+                /register date[^\d]*(\d{4}-\d{2}-\d{2})/i,  // General pattern - less specific
+                /registrar registration[^\d]*(\d{4}-\d{2}-\d{2})/i,  // General pattern - less specific
+                /Registration Date[^\d]*(\d{4}-\d{2}-\d{2})/i,  // Additional pattern for .ai domains - less specific
+                /Domain Registration Date[^\d]*(\d{4}-\d{2}-\d{2})/i,  // Another common pattern - less specific
+                /Created on[^\d]*(\d{4}-\d{2}-\d{2})/i,  // Another variation - less specific
                 /Domain Name Commencement Date[^\d]*(\d{2}-\d{2}-\d{4})/i,  // .hk domain format (DD-MM-YYYY)
-                /Creation Date[^\d]*(\d{4}-\d{2}-\d{2})/i,  // Alternative format
-                /Creation date[^\d]*(\d{4}-\d{2}-\d{2})/i,  // Lowercase variant
-                /registrant created[^\d]*(\d{4}-\d{2}-\d{2})/i,  // Some registries use this format
-                /created-date[^\d]*(\d{4}-\d{2}-\d{2})/i,  // Hyphenated format
-                /Registered on[^\d]*(\d{4}-\d{2}-\d{2})/i,  // Capitalized variant
-                /Record created on[^\d]*(\d{4}-\d{2}-\d{2})/i,  // Extended format
-                /Registration Time[^\d]*(\d{4}-\d{2}-\d{2})/i,  // Alternative term
-                /Domain created[^\d]*(\d{4}-\d{2}-\d{2})/i,  // Different phrasing
-                /Domain registered[^\d]*(\d{4}-\d{2}-\d{2})/i,  // Different phrasing
+                /Creation Date[^\d]*(\d{4}-\d{2}-\d{2})/i,  // Alternative format - less specific
+                /Creation date[^\d]*(\d{4}-\d{2}-\d{2})/i,  // Lowercase variant - less specific
+                /registrant created[^\d]*(\d{4}-\d{2}-\d{2})/i,  // Some registries use this format - less specific
+                /created-date[^\d]*(\d{4}-\d{2}-\d{2})/i,  // Hyphenated format - less specific
+                /Registered on[^\d]*(\d{4}-\d{2}-\d{2})/i,  // Capitalized variant - less specific
+                /Record created on[^\d]*(\d{4}-\d{2}-\d{2})/i,  // Extended format - less specific
+                /Registration Time[^\d]*(\d{4}-\d{2}-\d{2})/i,  // Alternative term - less specific
+                /Domain created[^\d]*(\d{4}-\d{2}-\d{2})/i,  // Different phrasing - less specific
+                /Domain registered[^\d]*(\d{4}-\d{2}-\d{2})/i,  // Different phrasing - less specific
                 /Fecha de registro[^\d]*(\d{2}\/\d{2}\/\d{4})/i,  // Spanish format (DD/MM/YYYY)
                 /Date de création[^\d]*(\d{2}\/\d{2}\/\d{4})/i,   // French format (DD/MM/YYYY)
                 /登録日[^\d]*(\d{4}-\d{2}-\d{2})/i,             // Japanese format (YYYY-MM-DD)
                 /등록일[^\d]*(\d{4}-\d{2}-\d{2})/i,              // Korean format (YYYY-MM-DD)
                 /注册时间[^\d]*(\d{4}-\d{2}-\d{2})/i,            // Chinese simplified format (YYYY-MM-DD)
-                /註冊時間[^\d]*(\d{4}-\d{2}-\d{2})/i             // Chinese traditional format (YYYY-MM-DD)
+                /註冊時間[^\d]*(\d{4}-\d{2}-\d{2})/i              // Chinese traditional format (YYYY-MM-DD)
             ];
 
             for (const pattern of datePatterns) {
                 const match = result.match(pattern);
                 if (match) {
                     let creationDate;
-                    // Handle different date formats
-                    if (match[1].includes('/')) {
+                    // Attempt to parse directly first (ISO, YYYY-MM-DD, etc.)
+                    let parsedDate = new Date(match[1]);
+
+                    if (!isNaN(parsedDate.getTime())) {
+                        creationDate = parsedDate;
+                    } else if (match[1].includes('/')) {
                         // Handle DD/MM/YYYY format
                         const [day, month, year] = match[1].split('/');
                         creationDate = new Date(`${year}-${month}-${day}`);
-                    } else if (match[1].includes('-') && match[1].length === 10 && parseInt(match[1].substring(0, 2)) > 31) {
-                        // Handle YYYY-MM-DD format
-                        creationDate = new Date(match[1]);
                     } else if (match[1].includes('-') && match[1].length === 10) {
                         // Handle DD-MM-YYYY format (like .hk domains)
+                        // This applies when direct parsing failed and it's a hyphenated 10-char string
                         const [day, month, year] = match[1].split('-');
                         creationDate = new Date(`${year}-${month}-${day}`);
                     } else {
-                        // Default to YYYY-MM-DD format
+                        // Fallback, though should be covered by direct parsing or specific formats
                         creationDate = new Date(match[1]);
                     }
                     
@@ -274,51 +280,53 @@ class WebsiteFraudChecker {
     }
 
     /**
-     * Fetch website content with both static and dynamic methods
+     * Fetch website content with Playwright first (if available), static as fallback
      */
     async fetchWebsiteContent(urlString) {
+        let browser = null; // Initialize browser to null
         try {
-            // First, try to fetch content statically
-            const staticContent = await this.fetchStaticContent(urlString);
+            const { chromium } = await import('playwright');
+            browser = await chromium.launch({ headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox'] });
+            const page = await browser.newPage();
             
-            // If Playwright is available, also try to get dynamic content
-            let dynamicContent = '';
-            try {
-                const { chromium } = await import('playwright');
-                const browser = await chromium.launch({ headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox'] });
-                const page = await browser.newPage();
-                
-                // Set a realistic user agent
-                await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36');
-                
-                // Navigate to the page
-                await page.goto(urlString, { waitUntil: 'networkidle', timeout: 10000 });
-                
-                // Wait for content to load
-                await page.waitForLoadState('domcontentloaded', { timeout: 5000 });
-                
-                // Get the content after JavaScript execution
-                dynamicContent = await page.content();
-                
-                await browser.close();
-            } catch (dynamicError) {
-                // If Playwright fails, that's okay - we'll just use static content
-                console.debug(`Dynamic content fetch failed (this is normal if Playwright is not installed): ${dynamicError.message}`);
+            // Set a realistic user agent
+            await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36');
+            
+            // Navigate to the page
+            await page.goto(urlString, { waitUntil: 'networkidle', timeout: 15000 });
+            
+            // Wait for content to load
+            await page.waitForLoadState('domcontentloaded', { timeout: 10000 });
+            
+            // Get the content after JavaScript execution
+            const dynamicContent = await page.content();
+            
+            console.log('   ✅ Content fetched successfully with Playwright (dynamic rendering)');
+            
+            return {
+                statusCode: 200, // Assume success since Playwright loaded the page
+                headers: {},
+                content: dynamicContent
+            };
+        } catch (dynamicError) {
+            // Playwright failed, warn user about reduced accuracy
+            console.log(`   ⚠️  Playwright failed: ${dynamicError.message}`);
+            console.log('   ⚠️  Falling back to static content fetching - accuracy may be reduced without dynamic rendering');
+            // Do not re-throw here, let the outer function handle the fallback.
+        } finally {
+            if (browser) {
+                await browser.close(); // Ensure browser is always closed
             }
+        }
 
-            // Return the content that has more text (indicating more complete scraping)
-            if (dynamicContent && dynamicContent.length > staticContent.content.length) {
-                return {
-                    statusCode: staticContent.statusCode,
-                    headers: staticContent.headers,
-                    content: dynamicContent
-                };
-            } else {
-                return staticContent;
-            }
-        } catch (error) {
-            console.debug(`Failed to fetch website content: ${error.message}`);
-            throw error;
+        // Fallback to static content fetching
+        try {
+            const staticContent = await this.fetchStaticContent(urlString);
+            console.log('   ⚠️  Content fetched with static method - some dynamic elements may be missing');
+            return staticContent;
+        } catch (staticError) {
+            console.debug(`Failed to fetch website content: ${staticError.message}`);
+            throw staticError;
         }
     }
 
@@ -501,7 +509,7 @@ class WebsiteFraudChecker {
                     'Content-Type': 'application/x-www-form-urlencoded',
                     'Content-Length': Buffer.byteLength(postData),
                     'User-Agent': 'WebsiteFraudChecker/1.0 (contact: contact@example.com)'
-                }
+                } 
             };
 
             // Make the POST request using Node.js http module
@@ -549,6 +557,8 @@ class WebsiteFraudChecker {
                                 resolve({
                                     isBlacklisted: false,
                                     threatsFound: [],
+                                    checkUnavailable: true,
+                                    message: 'PhishTank check unavailable: Unexpected API response format.',
                                     confidence: 'low'
                                 });
                             }
@@ -561,7 +571,9 @@ class WebsiteFraudChecker {
                             resolve({
                                 isBlacklisted: false,
                                 threatsFound: [],
-                                confidence: 'high'
+                                checkUnavailable: true,
+                                message: `PhishTank check unavailable: Failed to parse response (${parseError.message})`,
+                                confidence: 'low'
                             });
                         }
                     });
@@ -572,6 +584,8 @@ class WebsiteFraudChecker {
                     resolve({
                         isBlacklisted: false,
                         threatsFound: [],
+                        checkUnavailable: true,
+                        message: `PhishTank check unavailable: API request failed (${error.message})`,
                         confidence: 'low'
                     });
                 });
@@ -584,6 +598,8 @@ class WebsiteFraudChecker {
             return {
                 isBlacklisted: false,
                 threatsFound: [],
+                checkUnavailable: true,
+                message: `PhishTank check unavailable: An unexpected error occurred (${error.message})`,
                 confidence: 'low'
             };
         }
@@ -599,6 +615,8 @@ class WebsiteFraudChecker {
             return {
                 isBlacklisted: false,
                 threatsFound: [],
+                checkUnavailable: true,
+                message: 'Google Safe Browsing check unavailable: API key not provided',
                 confidence: 'low'
             };
         }
@@ -645,6 +663,8 @@ class WebsiteFraudChecker {
             return {
                 isBlacklisted: false,
                 threatsFound: [],
+                checkUnavailable: true,
+                message: `Google Safe Browsing check unavailable: An unexpected error occurred (${error.message})`,
                 confidence: 'low'
             };
         }
@@ -669,18 +689,30 @@ class WebsiteFraudChecker {
             ];
             
             const isBlacklisted = phishTankResult.isBlacklisted || googleResult.isBlacklisted;
+
+            let statusMessages = [];
+            if (phishTankResult.checkUnavailable) {
+                statusMessages.push(phishTankResult.message || 'PhishTank check unavailable.');
+            }
+            if (googleResult.checkUnavailable) {
+                statusMessages.push(googleResult.message || 'Google Safe Browsing check unavailable.');
+            }
             
             return {
                 isBlacklisted,
                 threatsFound: allThreats,
-                confidence: 'high' // We have high confidence when using these services
+                confidence: 'high', // Will adjust confidence dynamically later if needed
+                statusMessage: statusMessages.length > 0 ? statusMessages.join(' ') : ''
             };
         } catch (error) {
             console.debug(`Error in threat intelligence check: ${error.message}`);
             return {
                 isBlacklisted: false,
                 threatsFound: [],
-                confidence: 'low'
+                checkUnavailable: true,
+                message: `Threat intelligence check unavailable: An unexpected error occurred (${error.message})`,
+                confidence: 'low',
+                statusMessage: `Warning: Threat intelligence check failed due to unexpected error (${error.message})`
             };
         }
     }
@@ -959,7 +991,7 @@ class WebsiteFraudChecker {
         console.log('\n📄 Analyzing website content...');
         let contentResult;
         try {
-            const fetchedContent = await this.fetchWebsiteContent(websiteUrl);
+            const fetchedContent = await this.fetchWebsiteContent(websiteUrl); 
             contentResult = this.analyzeWebsiteContent(fetchedContent.content, hostname);
             console.log(`   ✅ Content fetched successfully (${fetchedContent.content.length} chars)`);
             
@@ -986,13 +1018,18 @@ class WebsiteFraudChecker {
         // Step 5: Check against threat intelligence feeds
         console.log('\n🛡️  Checking against threat intelligence feeds...');
         const threatResult = await this.checkThreatIntelligence(websiteUrl);
+        
+        if (threatResult.statusMessage) {
+            console.log(`   ⚠️  ${threatResult.statusMessage}`);
+            riskScore += 5; // Add a small risk for unavailable checks
+        }
+
         if (threatResult.isBlacklisted) {
             console.log(`   ❌ Site found in threat feeds: ${threatResult.threatsFound.join(', ')}`);
             riskScore += 50; // Blacklisted sites get very high risk
-        } else {
+        } else if (!threatResult.statusMessage) { // Only log "Site not found" if no statusMessage (i.e., checks were performed and found nothing)
             console.log('   ✅ Site not found in threat feeds');
         }
-
         // Step 6: Check for phishing indicators in domain
         const phishingIndicators = this.checkPhishingIndicators(hostname);
         if (phishingIndicators.length > 0) {
@@ -1002,7 +1039,6 @@ class WebsiteFraudChecker {
         }
 
         // Step 7: Add points for impersonation indicators with differentiated scoring
-        const contentAnalysis = await this.analyzeContentWithoutFetching(websiteUrl, hostname).catch(() => ({ impersonation: [] }));
         
         // Calculate impersonation score with a cap to prevent unlimited accumulation
         let impersonationScore = 0;
